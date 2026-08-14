@@ -1,67 +1,61 @@
-const cursor = document.querySelector('.cursor-glow');
-window.addEventListener('pointermove', e => {
-  if (cursor) {
-    cursor.style.left = `${e.clientX}px`;
-    cursor.style.top = `${e.clientY}px`;
-  }
-});
-
-const menuToggle = document.querySelector('.menu-toggle');
-const navLinks = document.querySelector('.nav-links');
-menuToggle?.addEventListener('click', () => {
-  const isOpen = navLinks.classList.toggle('open');
-  menuToggle.setAttribute('aria-expanded', isOpen);
-});
-
-document.querySelectorAll('.nav-links a').forEach(link => {
-  link.addEventListener('click', () => navLinks.classList.remove('open'));
-});
-
-const observer = new IntersectionObserver(entries => {
+const revealObserver = new IntersectionObserver(entries => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
       entry.target.classList.add('visible');
-      observer.unobserve(entry.target);
+      revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0.16 });
+}, { threshold: 0.12 });
 
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
-document.querySelectorAll('[data-counter]').forEach(counter => {
-  const target = Number(counter.dataset.counter);
-  let started = false;
-  const counterObserver = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting && !started) {
-      started = true;
-      let current = 0;
-      const step = Math.max(1, Math.ceil(target / 36));
-      const timer = setInterval(() => {
-        current += step;
-        if (current >= target) {
-          counter.textContent = target;
-          clearInterval(timer);
-        } else {
-          counter.textContent = current;
-        }
-      }, 28);
-      counterObserver.disconnect();
-    }
-  }, {threshold: .6});
-  counterObserver.observe(counter);
+const counterObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const el = entry.target;
+    const target = Number(el.dataset.count);
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 42));
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= target) {
+        el.textContent = target;
+        clearInterval(timer);
+      } else {
+        el.textContent = current;
+      }
+    }, 24);
+    counterObserver.unobserve(el);
+  });
+}, { threshold: 0.7 });
+
+document.querySelectorAll('[data-count]').forEach(el => counterObserver.observe(el));
+
+const links = [...document.querySelectorAll('.top-nav a')];
+const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+const navObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+  });
+}, { rootMargin: '-35% 0px -55% 0px', threshold: 0.01 });
+sections.forEach(section => navObserver.observe(section));
+
+const scrollTop = document.querySelector('.scroll-top');
+window.addEventListener('scroll', () => {
+  scrollTop.classList.toggle('visible', window.scrollY > 600);
 });
+scrollTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-document.querySelectorAll('.copy-btn').forEach(btn => {
-  btn.addEventListener('click', async () => {
+document.querySelectorAll('[data-copy]').forEach(button => {
+  button.addEventListener('click', async () => {
+    const original = button.textContent;
     try {
-      await navigator.clipboard.writeText(btn.dataset.copy);
-      const old = btn.textContent;
-      btn.textContent = 'Email Copied';
-      setTimeout(() => btn.textContent = old, 1500);
+      await navigator.clipboard.writeText(button.dataset.copy);
+      button.textContent = 'Email Copied';
     } catch {
-      btn.textContent = 'Copy manually';
+      button.textContent = 'Copy manually';
     }
+    setTimeout(() => button.textContent = original, 1600);
   });
 });
-
-document.getElementById('year').textContent = new Date().getFullYear();
